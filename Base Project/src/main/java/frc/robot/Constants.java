@@ -23,6 +23,11 @@ public class Constants {
     public static final double INTAKE_SPIN_POWER = 0.3;
     public static final int INTAKE_PORT = 6;
     public static final int DRIVER_CONTROLLER_PORT = 0;
+    public static final int GROUND_SWICH_PORT = 3;
+    public static final int FOLD_SWICH_PORT = 4;
+    public static final double ARM_POWER = 0.1;
+    public static final int LIFT_MOTOR_PORT = 5;
+    public static final double FF_KG = 0.048; 
     /**
     * public static final class DriveConstants {
     *   public static final int kLeftMotor1Port = 0;
