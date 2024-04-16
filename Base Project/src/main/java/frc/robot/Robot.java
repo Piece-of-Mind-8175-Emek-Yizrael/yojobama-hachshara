@@ -12,14 +12,17 @@
 
 package frc.robot;
 
+import com.revrobotics.CANSparkLowLevel.MotorType;
+import com.revrobotics.CANSparkMax;
+import com.revrobotics.RelativeEncoder;
+
 import edu.wpi.first.hal.FRCNetComm.tInstances;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
-
-import com.revrobotics.CANSparkMax;
-import com.revrobotics.CANSparkLowLevel.MotorType;
-
 import edu.wpi.first.hal.HAL;
+import edu.wpi.first.math.controller.ArmFeedforward;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.POM_lib.Joysticks.PomXboxController;
@@ -37,15 +40,26 @@ public class Robot extends TimedRobot {
 
     private RobotContainer m_robotContainer;
 
+    boolean isBPreset = false;
+    DigitalInput fold = new DigitalInput(Constants.FOLD_SWICH_PORT);
+    DigitalInput ground = new DigitalInput(Constants.GROUND_SWICH_PORT);
     CANSparkMax motor = new CANSparkMax(Constants.INTAKE_PORT, MotorType.kBrushless);
     PomXboxController driverController = new PomXboxController(Constants.DRIVER_CONTROLLER_PORT);
     int diraction = 0;
     int lastDiraction = 0;
-    
+    private final CANSparkMax liftMotor = new CANSparkMax(Constants.LIFT_MOTOR_PORT, com.revrobotics.CANSparkLowLevel.MotorType.kBrushless);
+    private RelativeEncoder encoder = liftMotor.getEncoder();
+    private ArmFeedforward ff = new ArmFeedforward(0, Constants.FF_KG , 0);
+
     /**
      * This function is run when the robot is first started up and should be
      * used for any initialization code.
      */
+
+    public double resistGravity(){
+        return ff.calculate(encoder.getPosition(), 0);
+    }
+    
     @Override
     public void robotInit() {
         // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
@@ -53,6 +67,7 @@ public class Robot extends TimedRobot {
         m_robotContainer = RobotContainer.getInstance();
         HAL.report(tResourceType.kResourceType_Framework, tInstances.kFramework_RobotBuilder);
         enableLiveWindowInTest(true);
+        encoder.setPositionConversionFactor((1.0 / 50) * (16.0 / 42) * 2 * Math.PI);
     }
 
     /**
@@ -68,9 +83,15 @@ public class Robot extends TimedRobot {
         // commands, running already-scheduled commands, removing finished or interrupted commands,
         // and running subsystem periodic() methods.  This must be called from the robot's periodic
         // block in order for anything in the Command-based framework to work.
-        
-        
         CommandScheduler.getInstance().run();
+        SmartDashboard.putNumber("arm encoder", encoder.getPosition());
+        SmartDashboard.putNumber("gravity resist", resistGravity());
+        SmartDashboard.putBoolean("ground switch", !ground.get());
+        SmartDashboard.putBoolean("fold switch", !fold.get());
+        if(!fold.get())
+        {
+            encoder.setPosition(-0.323);
+        }
     }
 
 
@@ -119,9 +140,10 @@ public class Robot extends TimedRobot {
     /**
      * This function is called periodically during operator control.
      */
+
     @Override
     public void teleopPeriodic() {
-
+        
         if(driverController.leftTrigger().getAsBoolean()) diraction=1;
         else if(driverController.rightTrigger().getAsBoolean()) diraction=-1;
         else diraction=0;
@@ -129,6 +151,24 @@ public class Robot extends TimedRobot {
         if(diraction != lastDiraction)
         {
             motor.set(Constants.INTAKE_SPIN_POWER * Math.signum(diraction));    
+        }
+
+        if(driverController.b().getAsBoolean()) isBPreset = true;
+        if(isBPreset)
+        {
+            if(fold.get())
+            {
+                liftMotor.set(-Constants.ARM_POWER + resistGravity());
+            }
+            else
+            {
+                isBPreset = false;
+                liftMotor.set(resistGravity());
+            }
+        }
+        else
+        {
+            liftMotor.set(resistGravity());
         }
 
         lastDiraction = diraction;
