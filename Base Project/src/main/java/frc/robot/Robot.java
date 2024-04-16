@@ -71,17 +71,6 @@ public class Robot extends TimedRobot {
         
         
         CommandScheduler.getInstance().run();
-        
-        if(driverController.leftTrigger().getAsBoolean()) diraction=1;
-        else if(driverController.rightTrigger().getAsBoolean()) diraction=-1;
-        else diraction=0;
-        
-        if(diraction != lastDiraction)
-        {
-            motor.set(Constants.INTAKE_SPIN_POWER * Math.signum(diraction));    
-        }
-
-        lastDiraction = diraction;
     }
 
 
@@ -133,6 +122,16 @@ public class Robot extends TimedRobot {
     @Override
     public void teleopPeriodic() {
 
+        if(driverController.leftTrigger().getAsBoolean()) diraction=1;
+        else if(driverController.rightTrigger().getAsBoolean()) diraction=-1;
+        else diraction=0;
+        
+        if(diraction != lastDiraction)
+        {
+            motor.set(Constants.INTAKE_SPIN_POWER * Math.signum(diraction));    
+        }
+
+        lastDiraction = diraction;
     }
 
     @Override
