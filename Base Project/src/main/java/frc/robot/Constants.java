@@ -20,7 +20,10 @@ package frc.robot;
  * constants are needed, to reduce verbosity.
  */
 public class Constants {
-   /**
+    public static final double INTAKE_SPIN_POWER = 0.3;
+    public static final int INTAKE_PORT = 6;
+    public static final int DRIVER_CONTROLLER_PORT = 0;
+    /**
     * public static final class DriveConstants {
     *   public static final int kLeftMotor1Port = 0;
     *   public static final int kLeftMotor2Port = 1;

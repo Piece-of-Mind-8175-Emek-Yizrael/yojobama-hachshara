@@ -14,10 +14,15 @@ package frc.robot;
 
 import edu.wpi.first.hal.FRCNetComm.tInstances;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
+
+import com.revrobotics.CANSparkMax;
+import com.revrobotics.CANSparkLowLevel.MotorType;
+
 import edu.wpi.first.hal.HAL;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import frc.robot.POM_lib.Joysticks.PomXboxController;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -32,6 +37,11 @@ public class Robot extends TimedRobot {
 
     private RobotContainer m_robotContainer;
 
+    CANSparkMax motor = new CANSparkMax(Constants.INTAKE_PORT, MotorType.kBrushless);
+    PomXboxController driverController = new PomXboxController(Constants.DRIVER_CONTROLLER_PORT);
+    int diraction = 0;
+    int lastDiraction = 0;
+    
     /**
      * This function is run when the robot is first started up and should be
      * used for any initialization code.
@@ -58,6 +68,8 @@ public class Robot extends TimedRobot {
         // commands, running already-scheduled commands, removing finished or interrupted commands,
         // and running subsystem periodic() methods.  This must be called from the robot's periodic
         // block in order for anything in the Command-based framework to work.
+        
+        
         CommandScheduler.getInstance().run();
     }
 
@@ -109,6 +121,17 @@ public class Robot extends TimedRobot {
      */
     @Override
     public void teleopPeriodic() {
+
+        if(driverController.leftTrigger().getAsBoolean()) diraction=1;
+        else if(driverController.rightTrigger().getAsBoolean()) diraction=-1;
+        else diraction=0;
+        
+        if(diraction != lastDiraction)
+        {
+            motor.set(Constants.INTAKE_SPIN_POWER * Math.signum(diraction));    
+        }
+
+        lastDiraction = diraction;
     }
 
     @Override
