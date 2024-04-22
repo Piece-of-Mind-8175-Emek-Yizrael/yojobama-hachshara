@@ -40,7 +40,18 @@ public class Robot extends TimedRobot {
 
     private RobotContainer m_robotContainer;
 
+<<<<<<< develop
+=======
+    DifferentialDrive driveTrain;
+    WPI_TalonSRX rightDriveTalon = new WPI_TalonSRX(Constants.DriveConstants.RIGHT_TALON);
+    WPI_VictorSPX rightDriveVictor = new WPI_VictorSPX(Constants.DriveConstants.RIGHT_VICTOR);
+    WPI_TalonSRX leftDriveTalon = new WPI_TalonSRX(Constants.DriveConstants.LEFT_TALON);
+    WPI_VictorSPX leftDriveVictor = new WPI_VictorSPX(Constants.DriveConstants.LEFT_VICTOR);
+
+    Boolean isYPreset = null;
+>>>>>>> local
     boolean isBPreset = false;
+    boolean isXPreset = false;
     DigitalInput fold = new DigitalInput(Constants.FOLD_SWICH_PORT);
     DigitalInput ground = new DigitalInput(Constants.GROUND_SWICH_PORT);
     CANSparkMax motor = new CANSparkMax(Constants.INTAKE_PORT, MotorType.kBrushless);
@@ -56,12 +67,29 @@ public class Robot extends TimedRobot {
      * used for any initialization code.
      */
 
+    public void arcadeDrive(double y, double spin)
+    {
+
+    } 
+
     public double resistGravity(){
         return ff.calculate(encoder.getPosition(), 0);
     }
     
     @Override
     public void robotInit() {
+<<<<<<< develop
+=======
+        rightDriveVictor.follow(rightDriveTalon);
+        leftDriveVictor.follow(leftDriveTalon);
+
+        rightDriveTalon.setInverted(false);
+        rightDriveVictor.setInverted(false);
+        leftDriveTalon.setInverted(true);
+        leftDriveVictor.setInverted(true);
+
+        driveTrain = new DifferentialDrive(leftDriveTalon::set, rightDriveTalon::set);
+>>>>>>> local
         // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
         // autonomous chooser on the dashboard.
         m_robotContainer = RobotContainer.getInstance();
@@ -94,12 +122,113 @@ public class Robot extends TimedRobot {
         }
     }
 
+    public void drive() {driveTrain.arcadeDrive(driverController.getLeftY()/2, driverController.getRightX()/2);}
+
+    public void doIntake()
+    {
+        if(driverController.leftTrigger().getAsBoolean()) diraction=1;
+        else if(driverController.rightTrigger().getAsBoolean()) diraction=-1;
+        else diraction=0;
+        
+        if(diraction != lastDiraction)
+        {
+            motor.set(Constants.INTAKE_SPIN_POWER * Math.signum(diraction));    
+        }
+    }
+
+    public void doLift()
+    {
+        if(driverController.yPressed().getAsBoolean())
+        {
+            isYPreset = true;
+            isXPreset = false;
+            isBPreset = false;    
+        }
+        if(driverController.yPressed().getAsBoolean())
+        {
+            isYPreset = false;
+            isXPreset = false;
+            isBPreset = false;    
+        }
+        if(driverController.bPressed().getAsBoolean()) 
+        {
+            isYPreset = false;
+            isBPreset = !isBPreset;
+            isXPreset = false;
+        }
+        else if(driverController.xPressed().getAsBoolean()) 
+        {
+            isYPreset = false;
+            isXPreset = !isXPreset;
+            isBPreset = false;
+        }
+
+        if(isXPreset && isBPreset)
+        {
+            isYPreset = false;
+            isXPreset = false;
+            isBPreset = false;
+        }
+
+        else if(isBPreset)
+        {
+            if(fold.get()) 
+            {
+                liftMotor.set(-Constants.ARM_POWER + resistGravity());
+                isXPreset = false;
+            }
+            else
+            {
+                isBPreset = false;
+                liftMotor.set(0);
+            }
+        }
+        else if(isXPreset)
+        {
+            if(ground.get()) 
+            {
+                liftMotor.set(Constants.ARM_POWER + resistGravity());                 
+                isBPreset = false;
+            }
+            else
+            {
+                isXPreset = false;
+                liftMotor.set(0);
+            }
+        }
+
+        if(isYPreset != null)
+        {
+            if(!isYPreset)
+            {
+                if(!fold.get()) 
+                {
+                    isYPreset = null;
+                    liftMotor.set(0);
+                }
+                else liftMotor.set(-Constants.ARM_POWER + resistGravity());
+            }
+            else if(isYPreset)
+            {
+                if(!ground.get()) 
+                {
+                    liftMotor.set(0);
+                    motor.set(Constants.INTAKE_SPIN_POWER);
+                }
+                else liftMotor.set(-Constants.ARM_POWER + resistGravity());
+            }
+        }
+        
+        else if(!fold.get() || !ground.get()) liftMotor.set(0);
+        else liftMotor.set(resistGravity());
+    }
 
     /**
     * This function is called once each time the robot enters Disabled mode.
     */
     @Override
     public void disabledInit() {
+    //    System.err.println("I am a null and I am ok. I bully Uri most of the day");
     }
 
     @Override
@@ -142,6 +271,7 @@ public class Robot extends TimedRobot {
      */
 
     @Override
+<<<<<<< develop
     public void teleopPeriodic() {
         
         if(driverController.leftTrigger().getAsBoolean()) diraction=1;
@@ -170,6 +300,12 @@ public class Robot extends TimedRobot {
         {
             liftMotor.set(resistGravity());
         }
+=======
+    public void teleopPeriodic() {        
+        drive();
+        doIntake();
+        doLift();
+>>>>>>> local
 
         lastDiraction = diraction;
     }
