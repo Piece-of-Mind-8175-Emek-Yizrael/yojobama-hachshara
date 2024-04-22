@@ -48,7 +48,8 @@ public class Robot extends TimedRobot {
     WPI_VictorSPX rightDriveVictor = new WPI_VictorSPX(Constants.DriveConstants.RIGHT_VICTOR);
     WPI_TalonSRX leftDriveTalon = new WPI_TalonSRX(Constants.DriveConstants.LEFT_TALON);
     WPI_VictorSPX leftDriveVictor = new WPI_VictorSPX(Constants.DriveConstants.LEFT_VICTOR);
-
+    
+    Boolean isAPreset = null;
     Boolean isYPreset = null;
     boolean isBPreset = false;
     boolean isXPreset = false;
@@ -123,10 +124,13 @@ public class Robot extends TimedRobot {
 
     public void doIntake()
     {
-        if(driverController.leftTrigger().getAsBoolean()) diraction=1;
-        else if(driverController.rightTrigger().getAsBoolean()) diraction=-1;
-        else diraction=0;
-        
+        if((isYPreset == null) && (isAPreset == null))
+        {
+            if(driverController.leftTrigger().getAsBoolean()) diraction=1;
+            else if(driverController.rightTrigger().getAsBoolean()) diraction=-1;
+            else diraction=0;
+        }
+
         if(diraction != lastDiraction)
         {
             motor.set(Constants.INTAKE_SPIN_POWER * Math.signum(diraction));    
@@ -135,34 +139,61 @@ public class Robot extends TimedRobot {
 
     public void doLift()
     {
+        if(driverController.PovUp().getAsBoolean())
+        {
+            liftMotor.set(resistGravity());
+            isAPreset = null;
+            isYPreset = null;
+            isXPreset = false;
+            isBPreset = false;
+        }
+        if(driverController.aPressed().getAsBoolean())
+        {
+            isAPreset = true;
+            isYPreset = null;
+            isXPreset = false;
+            isBPreset = false;
+        }
+        if(driverController.aReleased().getAsBoolean())
+        {
+            isAPreset = false;
+            isYPreset = null;
+            isXPreset = false;
+            isBPreset = false;
+        }
         if(driverController.yPressed().getAsBoolean())
         {
+            isAPreset = null;
             isYPreset = true;
             isXPreset = false;
             isBPreset = false;    
         }
-        if(driverController.yPressed().getAsBoolean())
+        if(driverController.yReleased().getAsBoolean())
         {
+            isAPreset = null;
             isYPreset = false;
             isXPreset = false;
             isBPreset = false;    
         }
         if(driverController.bPressed().getAsBoolean()) 
         {
-            isYPreset = false;
+            isAPreset = null;
+            isYPreset = null;
             isBPreset = !isBPreset;
             isXPreset = false;
         }
         else if(driverController.xPressed().getAsBoolean()) 
         {
-            isYPreset = false;
+            isAPreset = null;
+            isYPreset = null;
             isXPreset = !isXPreset;
             isBPreset = false;
         }
 
         if(isXPreset && isBPreset)
         {
-            isYPreset = false;
+            isAPreset = null;
+            isYPreset = null;
             isXPreset = false;
             isBPreset = false;
         }
@@ -194,10 +225,12 @@ public class Robot extends TimedRobot {
             }
         }
 
-        if(isYPreset != null)
+        else if(isYPreset != null)
         {
             if(!isYPreset)
             {
+                diraction = 0;
+
                 if(!fold.get()) 
                 {
                     isYPreset = null;
@@ -210,9 +243,33 @@ public class Robot extends TimedRobot {
                 if(!ground.get()) 
                 {
                     liftMotor.set(0);
-                    motor.set(Constants.INTAKE_SPIN_POWER);
+                    diraction = -1;
+                }
+                else liftMotor.set(Constants.ARM_POWER + resistGravity());
+            }
+        }
+
+        else if(isAPreset != null)
+        {
+            if(!isAPreset)
+            {
+                diraction = 0;
+
+                if(!fold.get()) 
+                {
+                    isAPreset = null;
+                    liftMotor.set(0);
                 }
                 else liftMotor.set(-Constants.ARM_POWER + resistGravity());
+            }
+            else if(isAPreset)
+            {
+                if(!ground.get()) 
+                {
+                    liftMotor.set(0);
+                    diraction = 1;
+                }
+                else liftMotor.set(Constants.ARM_POWER + resistGravity());
             }
         }
         
@@ -270,8 +327,8 @@ public class Robot extends TimedRobot {
     @Override
     public void teleopPeriodic() {        
         drive();
-        doIntake();
         doLift();
+        doIntake();
 
         lastDiraction = diraction;
     }
