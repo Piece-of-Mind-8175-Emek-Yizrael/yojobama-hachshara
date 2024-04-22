@@ -12,6 +12,8 @@
 
 package frc.robot;
 
+import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
+import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
@@ -22,6 +24,7 @@ import edu.wpi.first.hal.HAL;
 import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -40,8 +43,6 @@ public class Robot extends TimedRobot {
 
     private RobotContainer m_robotContainer;
 
-<<<<<<< develop
-=======
     DifferentialDrive driveTrain;
     WPI_TalonSRX rightDriveTalon = new WPI_TalonSRX(Constants.DriveConstants.RIGHT_TALON);
     WPI_VictorSPX rightDriveVictor = new WPI_VictorSPX(Constants.DriveConstants.RIGHT_VICTOR);
@@ -49,7 +50,6 @@ public class Robot extends TimedRobot {
     WPI_VictorSPX leftDriveVictor = new WPI_VictorSPX(Constants.DriveConstants.LEFT_VICTOR);
 
     Boolean isYPreset = null;
->>>>>>> local
     boolean isBPreset = false;
     boolean isXPreset = false;
     DigitalInput fold = new DigitalInput(Constants.FOLD_SWICH_PORT);
@@ -78,8 +78,6 @@ public class Robot extends TimedRobot {
     
     @Override
     public void robotInit() {
-<<<<<<< develop
-=======
         rightDriveVictor.follow(rightDriveTalon);
         leftDriveVictor.follow(leftDriveTalon);
 
@@ -89,7 +87,6 @@ public class Robot extends TimedRobot {
         leftDriveVictor.setInverted(true);
 
         driveTrain = new DifferentialDrive(leftDriveTalon::set, rightDriveTalon::set);
->>>>>>> local
         // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
         // autonomous chooser on the dashboard.
         m_robotContainer = RobotContainer.getInstance();
@@ -271,41 +268,10 @@ public class Robot extends TimedRobot {
      */
 
     @Override
-<<<<<<< develop
-    public void teleopPeriodic() {
-        
-        if(driverController.leftTrigger().getAsBoolean()) diraction=1;
-        else if(driverController.rightTrigger().getAsBoolean()) diraction=-1;
-        else diraction=0;
-        
-        if(diraction != lastDiraction)
-        {
-            motor.set(Constants.INTAKE_SPIN_POWER * Math.signum(diraction));    
-        }
-
-        if(driverController.b().getAsBoolean()) isBPreset = true;
-        if(isBPreset)
-        {
-            if(fold.get())
-            {
-                liftMotor.set(-Constants.ARM_POWER + resistGravity());
-            }
-            else
-            {
-                isBPreset = false;
-                liftMotor.set(resistGravity());
-            }
-        }
-        else
-        {
-            liftMotor.set(resistGravity());
-        }
-=======
     public void teleopPeriodic() {        
         drive();
         doIntake();
         doLift();
->>>>>>> local
 
         lastDiraction = diraction;
     }

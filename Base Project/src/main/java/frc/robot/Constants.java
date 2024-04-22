@@ -28,13 +28,13 @@ public class Constants {
     public static final double ARM_POWER = 0.1;
     public static final int LIFT_MOTOR_PORT = 5;
     public static final double FF_KG = 0.048; 
-    /**
-    * public static final class DriveConstants {
-    *   public static final int kLeftMotor1Port = 0;
-    *   public static final int kLeftMotor2Port = 1;
-    *   public static final int kRightMotor1Port = 2;
-    *   public static final int kRightMotor2Port = 3; 
-    * }
-    */ 
+
+    public static class DriveConstants
+    {
+        public static final int LEFT_TALON = 2;
+        public static final int LEFT_VICTOR = 1;
+        public static final int RIGHT_TALON = 4;
+        public static final int RIGHT_VICTOR = 3;
+    }
 }
 
