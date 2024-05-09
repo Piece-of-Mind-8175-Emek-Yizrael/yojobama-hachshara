@@ -28,9 +28,11 @@ public class Constants {
     public static final double ARM_POWER = 0.1;
     public static final int LIFT_MOTOR_PORT = 5;
     public static final double FF_KG = 0.048; 
+    public static final int TIME_THAT_URI_WANTS = 2;
 
     public static class DriveConstants
     {
+        public static final double DRIVE_TRAIN_AUTO_SPEED = 0.15;
         public static final int LEFT_TALON = 2;
         public static final int LEFT_VICTOR = 1;
         public static final int RIGHT_TALON = 4;

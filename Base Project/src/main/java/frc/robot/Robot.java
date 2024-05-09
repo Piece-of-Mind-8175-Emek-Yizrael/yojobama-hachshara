@@ -24,7 +24,9 @@ import edu.wpi.first.hal.HAL;
 import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.simulation.ElevatorSim;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -38,54 +40,118 @@ import frc.robot.POM_lib.Joysticks.PomXboxController;
  * the project.
  */
 public class Robot extends TimedRobot {
-
+    
     private Command m_autonomousCommand;
 
     private RobotContainer m_robotContainer;
 
+    boolean complexArm = false;
     DifferentialDrive driveTrain;
     WPI_TalonSRX rightDriveTalon = new WPI_TalonSRX(Constants.DriveConstants.RIGHT_TALON);
     WPI_VictorSPX rightDriveVictor = new WPI_VictorSPX(Constants.DriveConstants.RIGHT_VICTOR);
     WPI_TalonSRX leftDriveTalon = new WPI_TalonSRX(Constants.DriveConstants.LEFT_TALON);
     WPI_VictorSPX leftDriveVictor = new WPI_VictorSPX(Constants.DriveConstants.LEFT_VICTOR);
     
-    Boolean isAPreset = null;
-    Boolean isYPreset = null;
-    boolean isBPreset = false;
-    boolean isXPreset = false;
     DigitalInput fold = new DigitalInput(Constants.FOLD_SWICH_PORT);
     DigitalInput ground = new DigitalInput(Constants.GROUND_SWICH_PORT);
-    CANSparkMax motor = new CANSparkMax(Constants.INTAKE_PORT, MotorType.kBrushless);
+    CANSparkMax intakeMotor = new CANSparkMax(Constants.INTAKE_PORT, MotorType.kBrushless);
     PomXboxController driverController = new PomXboxController(Constants.DRIVER_CONTROLLER_PORT);
-    int diraction = 0;
-    int lastDiraction = 0;
     private final CANSparkMax liftMotor = new CANSparkMax(Constants.LIFT_MOTOR_PORT, com.revrobotics.CANSparkLowLevel.MotorType.kBrushless);
     private RelativeEncoder encoder = liftMotor.getEncoder();
     private ArmFeedforward ff = new ArmFeedforward(0, Constants.FF_KG , 0);
+
+    Timer timer = new Timer();
+    AutonomousStage autoStage = AutonomousStage.DRIVE_FORWARD;
+
+    boolean isAuto = false;
 
     /**
      * This function is run when the robot is first started up and should be
      * used for any initialization code.
      */
 
-    public void arcadeDrive(double y, double spin)
-    {
-
-    } 
 
     public double resistGravity(){
         return ff.calculate(encoder.getPosition(), 0);
     }
+
+    public enum AutonomousStage
+    {
+        DRIVE_FORWARD(0),OPEN_ARM(1),INTAKE(2),CLOSE_ARM(3),DRIVE_BACKWARD(4);
+
+        public int stage = 0;
+
+        private AutonomousStage(int stage)
+        {
+            this.stage = stage;
+        }
+
+        public int get()
+        {
+            return stage;
+        }
+    }
+
+    public enum IntakeState
+    {
+        IN(1),OUT(-1),FREE(0);
+        
+        int multiplier;
+
+        private IntakeState(int multiplier)
+        {
+            this.multiplier = multiplier;
+        }
+
+        public double getSpeed()
+        {
+            return multiplier * Constants.INTAKE_SPIN_POWER;
+        }
+    }
+
+    public enum ArmState
+    {
+        NOPEN(1),CLOSE(-1),HOLD(0),FREE(true),INOPEN(1),OUTOPEN(1);
+
+        int multiplier;
+        double resistGravity;
+        boolean isFree;
+
+        public void setResistGravity(double resistGravity)
+        {
+            this.resistGravity = resistGravity;
+        }
+
+        private ArmState(int multiplier)
+        {
+            this.multiplier = multiplier;
+            this.isFree = false;
+        }
+        
+        private ArmState(boolean isFree)
+        {
+            this.multiplier = 0;
+            this.isFree = true;    
+        }
+
+        public double getSpeed()
+        {
+            return !isFree ? ((multiplier * Constants.ARM_POWER) + resistGravity) : 0;
+        }
+    }
+
+    ArmState armState = ArmState.FREE,lastArmState = armState;
+    IntakeState intakeState = IntakeState.FREE;
     
     @Override
     public void robotInit() {
         rightDriveVictor.follow(rightDriveTalon);
         leftDriveVictor.follow(leftDriveTalon);
 
-        rightDriveTalon.setInverted(false);
-        rightDriveVictor.setInverted(false);
-        leftDriveTalon.setInverted(true);
-        leftDriveVictor.setInverted(true);
+        rightDriveTalon.setInverted(true);
+        rightDriveVictor.setInverted(true);
+        leftDriveTalon.setInverted(false);
+        leftDriveVictor.setInverted(false);
 
         driveTrain = new DifferentialDrive(leftDriveTalon::set, rightDriveTalon::set);
         // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
@@ -103,6 +169,7 @@ public class Robot extends TimedRobot {
     * <p>This runs after the mode specific periodic functions, but before
     * LiveWindow and SmartDashboard integrated updating.
     */
+    
     @Override
     public void robotPeriodic() {
         // Runs the Scheduler.  This is responsible for polling buttons, adding newly-scheduled
@@ -122,9 +189,9 @@ public class Robot extends TimedRobot {
 
     public void drive() {driveTrain.arcadeDrive(driverController.getLeftY()/2, driverController.getRightX()/2);}
 
-    public void doIntake()
+    /*public void doIntake()
     {
-        if((isYPreset == null) && (isAPreset == null))
+        if((isYPressed == null) && (isAPressed == null))
         {
             if(driverController.leftTrigger().getAsBoolean()) diraction=1;
             else if(driverController.rightTrigger().getAsBoolean()) diraction=-1;
@@ -135,147 +202,77 @@ public class Robot extends TimedRobot {
         {
             motor.set(Constants.INTAKE_SPIN_POWER * Math.signum(diraction));    
         }
-    }
+    }*/
 
     public void doLift()
     {
-        if(driverController.PovUp().getAsBoolean())
+        if(!isAuto)
         {
-            liftMotor.set(resistGravity());
-            isAPreset = null;
-            isYPreset = null;
-            isXPreset = false;
-            isBPreset = false;
-        }
-        if(driverController.aPressed().getAsBoolean())
-        {
-            isAPreset = true;
-            isYPreset = null;
-            isXPreset = false;
-            isBPreset = false;
-        }
-        if(driverController.aReleased().getAsBoolean())
-        {
-            isAPreset = false;
-            isYPreset = null;
-            isXPreset = false;
-            isBPreset = false;
-        }
-        if(driverController.yPressed().getAsBoolean())
-        {
-            isAPreset = null;
-            isYPreset = true;
-            isXPreset = false;
-            isBPreset = false;    
-        }
-        if(driverController.yReleased().getAsBoolean())
-        {
-            isAPreset = null;
-            isYPreset = false;
-            isXPreset = false;
-            isBPreset = false;    
-        }
-        if(driverController.bPressed().getAsBoolean()) 
-        {
-            isAPreset = null;
-            isYPreset = null;
-            isBPreset = !isBPreset;
-            isXPreset = false;
-        }
-        else if(driverController.xPressed().getAsBoolean()) 
-        {
-            isAPreset = null;
-            isYPreset = null;
-            isXPreset = !isXPreset;
-            isBPreset = false;
-        }
+            // checking if a button was pressed
+            //----------------------------------------------------------------
+            if(driverController.PovUp().getAsBoolean()) armState = ArmState.HOLD;
+            if(driverController.aPressed().getAsBoolean()) armState = ArmState.CLOSE;
+            if(driverController.yPressed().getAsBoolean()) armState = ArmState.NOPEN;
 
-        if(isXPreset && isBPreset)
-        {
-            isAPreset = null;
-            isYPreset = null;
-            isXPreset = false;
-            isBPreset = false;
+            if(driverController.bPressed().getAsBoolean()) armState = ArmState.INOPEN;
+            if(driverController.bReleased().getAsBoolean())
+            {
+                armState = ArmState.CLOSE;
+                intakeState = IntakeState.FREE;
+                complexArm = false;
+            }
+            if(driverController.xPressed().getAsBoolean()) armState = ArmState.OUTOPEN;
+            if(driverController.xReleased().getAsBoolean()){
+                armState = ArmState.CLOSE;
+                intakeState = IntakeState.FREE;
+                complexArm = false;
+            }
+            //----------------------------------------------------------------
         }
-
-        else if(isBPreset)
-        {
-            if(fold.get()) 
+        // checking if one of the switches is pressed
+        //----------------------------------------------------------------
+        if(!ground.get())
+        {   
+            if(lastArmState == ArmState.INOPEN)
             {
-                liftMotor.set(-Constants.ARM_POWER + resistGravity());
-                isXPreset = false;
-            }
-            else
+                complexArm = true;
+                intakeState = IntakeState.IN;
+                armState = ArmState.FREE;
+            } 
+            else if(lastArmState == ArmState.OUTOPEN)
             {
-                isBPreset = false;
-                liftMotor.set(0);
+                complexArm = true;
+                intakeState = IntakeState.OUT;
+                armState = ArmState.FREE;
             }
+            if(armState == ArmState.NOPEN) armState = ArmState.FREE;
+            else if(armState == ArmState.HOLD) armState = ArmState.FREE; 
         }
-        else if(isXPreset)
-        {
-            if(ground.get()) 
-            {
-                liftMotor.set(Constants.ARM_POWER + resistGravity());                 
-                isBPreset = false;
-            }
-            else
-            {
-                isXPreset = false;
-                liftMotor.set(0);
-            }
-        }
+        else if(ground.get() && (armState == ArmState.INOPEN || armState == ArmState.OUTOPEN)) complexArm = false;
+        else if(!fold.get() && armState == ArmState.CLOSE) armState = ArmState.FREE;
+        else if(!fold.get() && armState == ArmState.HOLD) armState = ArmState.FREE;
+        //----------------------------------------------------------------
 
-        else if(isYPreset != null)
-        {
-            if(!isYPreset)
-            {
-                diraction = 0;
-
-                if(!fold.get()) 
-                {
-                    isYPreset = null;
-                    liftMotor.set(0);
-                }
-                else liftMotor.set(-Constants.ARM_POWER + resistGravity());
-            }
-            else if(isYPreset)
-            {
-                if(!ground.get()) 
-                {
-                    liftMotor.set(0);
-                    diraction = -1;
-                }
-                else liftMotor.set(Constants.ARM_POWER + resistGravity());
-            }
-        }
-
-        else if(isAPreset != null)
-        {
-            if(!isAPreset)
-            {
-                diraction = 0;
-
-                if(!fold.get()) 
-                {
-                    isAPreset = null;
-                    liftMotor.set(0);
-                }
-                else liftMotor.set(-Constants.ARM_POWER + resistGravity());
-            }
-            else if(isAPreset)
-            {
-                if(!ground.get()) 
-                {
-                    liftMotor.set(0);
-                    diraction = 1;
-                }
-                else liftMotor.set(Constants.ARM_POWER + resistGravity());
-            }
-        }
-        
-        else if(!fold.get() || !ground.get()) liftMotor.set(0);
-        else liftMotor.set(resistGravity());
+        armState.setResistGravity(resistGravity());
+        liftMotor.set(armState.getSpeed());
     }
+
+    public void doIntake()
+    {
+        if(!complexArm)
+        {
+            if(armState != ArmState.FREE) intakeState = IntakeState.FREE;
+        
+            else if(driverController.LB().getAsBoolean()) intakeState = IntakeState.IN;
+            else if(driverController.RB().getAsBoolean()) intakeState = IntakeState.OUT;
+        
+            else if(!driverController.LB().getAsBoolean()) intakeState = IntakeState.FREE;
+            else if(!driverController.RB().getAsBoolean()) intakeState = IntakeState.FREE;
+        }
+        intakeMotor.set(intakeState.getSpeed());
+    }
+
+        
 
     /**
     * This function is called once each time the robot enters Disabled mode.
@@ -294,12 +291,15 @@ public class Robot extends TimedRobot {
     */
     @Override
     public void autonomousInit() {
-        m_autonomousCommand = m_robotContainer.getAutonomousCommand();
+        // m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
         // schedule the autonomous command (example)
         if (m_autonomousCommand != null) {
             m_autonomousCommand.schedule();
         }
+        timer.restart();
+
+        isAuto = true;
     }
 
     /**
@@ -307,10 +307,60 @@ public class Robot extends TimedRobot {
     */
     @Override
     public void autonomousPeriodic() {
+            switch (autoStage) 
+            {
+                case DRIVE_FORWARD:
+                    if(timer.get()<Constants.TIME_THAT_URI_WANTS) driveTrain.arcadeDrive(Constants.DriveConstants.DRIVE_TRAIN_AUTO_SPEED, 0, false);
+                    else
+                    {
+                        armState = ArmState.NOPEN;
+                        autoStage.stage++;
+                    }
+                    break;
+                case OPEN_ARM:
+                    if(armState == ArmState.FREE)
+                    {
+                        autoStage.stage++;
+                        timer.restart();
+                        intakeMotor.set(-Constants.INTAKE_SPIN_POWER);;
+                        complexArm = false;
+                    }
+                    break;
+                case INTAKE:
+                    if(timer.get()>Constants.TIME_THAT_URI_WANTS)
+                    {
+                        armState = ArmState.CLOSE;
+                        autoStage.stage++;
+                        intakeMotor.set(0);
+                    }
+                    break;
+                case CLOSE_ARM:
+                    if(armState == ArmState.FREE)
+                    {
+                        timer.restart();
+                        autoStage.stage++;
+                    }
+                    break;
+                case DRIVE_BACKWARD:
+                    if(timer.get()<Constants.TIME_THAT_URI_WANTS) driveTrain.arcadeDrive(-Constants.DriveConstants.DRIVE_TRAIN_AUTO_SPEED, 0, false);
+                    else
+                    {
+                        autoStage.stage++;
+                    }
+                    break;
+
+                default:
+                    isAuto = false;
+                    break;
+            }
+
+        doLift();
     }
 
     @Override
     public void teleopInit() {
+
+        isAuto = false;
         // This makes sure that the autonomous stops running when
         // teleop starts running. If you want the autonomous to
         // continue until interrupted by another command, remove
@@ -330,7 +380,7 @@ public class Robot extends TimedRobot {
         doLift();
         doIntake();
 
-        lastDiraction = diraction;
+        lastArmState = armState;
     }
 
     @Override
