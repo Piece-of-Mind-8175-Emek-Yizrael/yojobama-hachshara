@@ -20,7 +20,8 @@ public class OpenOuttakeCloseCommand extends Command
     public void initialize()
     {
         armSubsystem.open(Constants.ArmConstants.ARM_POWER)
-                .andThen(intakeSubsystem.intakeUntilIn(Constants.IntakeConstants.INTAKE_SPIN_POWER_OUT)
-                        .andThen(armSubsystem.close(-Constants.ArmConstants.ARM_POWER)));
+                .andThen(intakeSubsystem.outtake(Constants.IntakeConstants.INTAKE_SPIN_POWER_OUT)
+                        .withTimeout(1)
+                            .andThen(armSubsystem.close(-Constants.ArmConstants.ARM_POWER)));
     }
 }
