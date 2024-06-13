@@ -12,8 +12,11 @@
 
 package frc.robot;
 
+import javax.lang.model.util.ElementScanner14;
+
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
+import com.ctre.phoenix.sensors.PigeonIMU;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
@@ -22,6 +25,7 @@ import edu.wpi.first.hal.FRCNetComm.tInstances;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
 import edu.wpi.first.hal.HAL;
 import edu.wpi.first.math.controller.ArmFeedforward;
+import edu.wpi.first.wpilibj.AnalogPotentiometer;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
@@ -52,14 +56,19 @@ public class Robot extends TimedRobot {
     WPI_TalonSRX leftDriveTalon = new WPI_TalonSRX(Constants.DriveConstants.LEFT_TALON);
     WPI_VictorSPX leftDriveVictor = new WPI_VictorSPX(Constants.DriveConstants.LEFT_VICTOR);
     
-    DigitalInput fold = new DigitalInput(Constants.FOLD_SWICH_PORT);
-    DigitalInput ground = new DigitalInput(Constants.GROUND_SWICH_PORT);
-    CANSparkMax intakeMotor = new CANSparkMax(Constants.INTAKE_PORT, MotorType.kBrushless);
+    DigitalInput fold = new DigitalInput(Constants.ArmConstants.FOLD_SWICH_PORT);
+    DigitalInput ground = new DigitalInput(Constants.ArmConstants.GROUND_SWICH_PORT);
+    CANSparkMax intakeMotor = new CANSparkMax(Constants.IntakeConstants.INTAKE_PORT, MotorType.kBrushless);
     PomXboxController driverController = new PomXboxController(Constants.DRIVER_CONTROLLER_PORT);
-    private final CANSparkMax liftMotor = new CANSparkMax(Constants.LIFT_MOTOR_PORT, com.revrobotics.CANSparkLowLevel.MotorType.kBrushless);
+    private final CANSparkMax liftMotor = new CANSparkMax(Constants.ArmConstants.LIFT_MOTOR_PORT, com.revrobotics.CANSparkLowLevel.MotorType.kBrushless);
     private RelativeEncoder encoder = liftMotor.getEncoder();
-    private ArmFeedforward ff = new ArmFeedforward(0, Constants.FF_KG , 0);
+    private ArmFeedforward ff = new ArmFeedforward(0, Constants.ArmConstants.FF_KG , 0);
+    PigeonIMU imu = new PigeonIMU(Constants.DriveConstants.PigeonIMU);
 
+    AnalogPotentiometer sensor = new AnalogPotentiometer(0);
+
+    int timesTurnd = 0;
+    double startAngle;
     Timer timer = new Timer();
     AutonomousStage autoStage = AutonomousStage.DRIVE_FORWARD;
 
@@ -77,7 +86,7 @@ public class Robot extends TimedRobot {
 
     public enum AutonomousStage
     {
-        DRIVE_FORWARD(0),OPEN_ARM(1),INTAKE(2),CLOSE_ARM(3),DRIVE_BACKWARD(4);
+        PUT_CUBE(0),TURN_TO_CONE(1),DRIVE_FORWARD(2),TURN_TO_DEPOSIT(3),DRIVE_TO_DEPOSIT(4),PUT_CONE(5);
 
         public int stage = 0;
 
@@ -103,9 +112,13 @@ public class Robot extends TimedRobot {
             this.multiplier = multiplier;
         }
 
-        public double getSpeed()
+        public double getSpeedIN()
         {
-            return multiplier * Constants.INTAKE_SPIN_POWER;
+            return multiplier * Constants.IntakeConstants.INTAKE_SPIN_POWER_IN;
+        }
+        public double getSpeedOUT()
+        {
+            return multiplier * Constants.IntakeConstants.INTAKE_SPIN_POWER_OUT;
         }
     }
 
@@ -136,7 +149,7 @@ public class Robot extends TimedRobot {
 
         public double getSpeed()
         {
-            return !isFree ? ((multiplier * Constants.ARM_POWER) + resistGravity) : 0;
+            return !isFree ? ((multiplier * Constants.ArmConstants.ARM_POWER) + resistGravity) : 0;
         }
     }
 
@@ -145,6 +158,9 @@ public class Robot extends TimedRobot {
     
     @Override
     public void robotInit() {
+
+        //intakeMotor.setSecondaryCurrentLimit(Constants.INTAKE_CURRENT_LIMIT);
+
         rightDriveVictor.follow(rightDriveTalon);
         leftDriveVictor.follow(leftDriveTalon);
 
@@ -177,6 +193,7 @@ public class Robot extends TimedRobot {
         // and running subsystem periodic() methods.  This must be called from the robot's periodic
         // block in order for anything in the Command-based framework to work.
         CommandScheduler.getInstance().run();
+        SmartDashboard.putNumber("ultrasonic", sensor.get());
         SmartDashboard.putNumber("arm encoder", encoder.getPosition());
         SmartDashboard.putNumber("gravity resist", resistGravity());
         SmartDashboard.putBoolean("ground switch", !ground.get());
@@ -185,6 +202,7 @@ public class Robot extends TimedRobot {
         {
             encoder.setPosition(-0.323);
         }
+    driveTrain.feed();
     }
 
     public void drive() {driveTrain.arcadeDrive(driverController.getLeftY()/2, driverController.getRightX()/2);}
@@ -206,7 +224,7 @@ public class Robot extends TimedRobot {
 
     public void doLift()
     {
-        if(!isAuto)
+        if(true)
         {
             // checking if a button was pressed
             //----------------------------------------------------------------
@@ -261,7 +279,7 @@ public class Robot extends TimedRobot {
     {
         if(!complexArm)
         {
-            if(armState != ArmState.FREE) intakeState = IntakeState.FREE;
+            if((armState != ArmState.FREE) && (armState != ArmState.HOLD)) intakeState = IntakeState.FREE;
         
             else if(driverController.LB().getAsBoolean()) intakeState = IntakeState.IN;
             else if(driverController.RB().getAsBoolean()) intakeState = IntakeState.OUT;
@@ -269,7 +287,7 @@ public class Robot extends TimedRobot {
             else if(!driverController.LB().getAsBoolean()) intakeState = IntakeState.FREE;
             else if(!driverController.RB().getAsBoolean()) intakeState = IntakeState.FREE;
         }
-        intakeMotor.set(intakeState.getSpeed());
+        intakeMotor.set(intakeState == IntakeState.OUT ? intakeState.getSpeedOUT() : intakeState.getSpeedIN());
     }
 
         
@@ -297,9 +315,11 @@ public class Robot extends TimedRobot {
         if (m_autonomousCommand != null) {
             m_autonomousCommand.schedule();
         }
-        timer.restart();
+        timer.stop();
 
+        autoStage = AutonomousStage.PUT_CUBE;
         isAuto = true;
+        startAngle = imu.getYaw();
     }
 
     /**
@@ -307,44 +327,95 @@ public class Robot extends TimedRobot {
     */
     @Override
     public void autonomousPeriodic() {
+
+        SmartDashboard.putString("Autonomus stage", autoStage.toString());
+        SmartDashboard.putNumber("timer time", timer.get());
+
+        if(autoStage.stage < 6)
+        {
             switch (autoStage) 
             {
-                case DRIVE_FORWARD:
-                    if(timer.get()<Constants.TIME_THAT_URI_WANTS) driveTrain.arcadeDrive(Constants.DriveConstants.DRIVE_TRAIN_AUTO_SPEED, 0, false);
+                case PUT_CUBE:
+                    if(encoder.getPosition() < Constants.ArmConstants.ARM_ENCODER_POSITION_HIGH)
+                    {
+                        armState = ArmState.OUTOPEN;
+                        timer.restart();  
+                    }
+                    else if(timer.get() > 1)
+                    {
+                        armState = ArmState.HOLD;
+                        intakeMotor.set(0);
+                        autoStage = AutonomousStage.TURN_TO_CONE;
+                    }
                     else
                     {
-                        armState = ArmState.NOPEN;
-                        autoStage.stage++;
-                    }
+                        //timer.restart();
+                        armState = ArmState.HOLD;
+                        intakeMotor.set(Constants.IntakeConstants.INTAKE_SPIN_POWER_OUT);
+                    }                    
                     break;
-                case OPEN_ARM:
-                    if(armState == ArmState.FREE)
+
+                case TURN_TO_CONE:
+                    if(Math.abs(imu.getYaw() - startAngle) < 174 && armState == ArmState.HOLD) driveTrain.arcadeDrive(0, -0.15,false);
+                    else if(Math.abs(imu.getYaw() - startAngle) >= 174)
                     {
-                        autoStage.stage++;
+                        driveTrain.arcadeDrive(0, 0, false);
+                        armState = ArmState.NOPEN;
+                        autoStage = AutonomousStage.DRIVE_FORWARD;
                         timer.restart();
-                        intakeMotor.set(-Constants.INTAKE_SPIN_POWER);;
-                        complexArm = false;
+                    } 
+                    break;
+                case DRIVE_FORWARD:
+                    if(armState != ArmState.FREE){
+                        if(!ground.get()) armState = ArmState.FREE;
+                        timer.restart();
+                    }
+                    else if(timer.get() < Constants.TIME_THAT_URI_WANTS && armState == ArmState.FREE)
+                    {
+                        driveTrain.arcadeDrive(0.25, 0,false);
+                        intakeMotor.set(Constants.IntakeConstants.INTAKE_SPIN_POWER_IN);
+                    }
+                    else if(timer.get() >= Constants.TIME_THAT_URI_WANTS)
+                    {
+                        intakeMotor.set(0);
+                        armState = ArmState.CLOSE;
+                        driveTrain.arcadeDrive(0, 0, false);
+                        intakeState = IntakeState.FREE;
+                        autoStage = AutonomousStage.TURN_TO_DEPOSIT;
+                        startAngle = imu.getYaw();
                     }
                     break;
-                case INTAKE:
-                    if(timer.get()>Constants.TIME_THAT_URI_WANTS)
+                case TURN_TO_DEPOSIT:
+                    if(Math.abs(imu.getYaw() - startAngle) < 180 && armState == ArmState.FREE) driveTrain.arcadeDrive(0, 0.15,false);
+                    else if(Math.abs(imu.getYaw() - startAngle) >= 180)
+                    {
+                        timer.restart();
+                        driveTrain.arcadeDrive(0, 0, false);
+                        autoStage = AutonomousStage.DRIVE_TO_DEPOSIT;
+                    }
+                    break;
+                case DRIVE_TO_DEPOSIT:
+                    if(timer.get() < Constants.TIME_THAT_URI_WANTS) driveTrain.arcadeDrive(0.2, 0,false);
+                    else
+                    {
+                        timer.reset();
+                        armState = ArmState.OUTOPEN;
+                        autoStage = AutonomousStage.PUT_CONE;
+                        driveTrain.arcadeDrive(0, 0,false);
+                    }
+                    break;
+                case PUT_CONE:
+                    if(armState != ArmState.HOLD)
+                    { 
+                        timer.restart();
+                        if(encoder.getPosition() < Constants.ArmConstants.ARM_ENCODER_POSITION_HIGH) armState = ArmState.OUTOPEN;
+                        else armState = ArmState.HOLD;
+                    }
+                    if(armState == ArmState.HOLD && timer.get() < 1) intakeMotor.set(-Constants.IntakeConstants.INTAKE_SPIN_POWER_IN);
+                    else if(timer.get() >= 1)
                     {
                         armState = ArmState.CLOSE;
-                        autoStage.stage++;
                         intakeMotor.set(0);
-                    }
-                    break;
-                case CLOSE_ARM:
-                    if(armState == ArmState.FREE)
-                    {
-                        timer.restart();
-                        autoStage.stage++;
-                    }
-                    break;
-                case DRIVE_BACKWARD:
-                    if(timer.get()<Constants.TIME_THAT_URI_WANTS) driveTrain.arcadeDrive(-Constants.DriveConstants.DRIVE_TRAIN_AUTO_SPEED, 0, false);
-                    else
-                    {
                         autoStage.stage++;
                     }
                     break;
@@ -354,8 +425,11 @@ public class Robot extends TimedRobot {
                     break;
             }
 
+        }
+        
         doLift();
     }
+
 
     @Override
     public void teleopInit() {
