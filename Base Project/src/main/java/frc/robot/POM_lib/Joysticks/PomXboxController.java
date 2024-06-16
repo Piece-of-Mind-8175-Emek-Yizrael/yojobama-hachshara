@@ -455,14 +455,12 @@ public class PomXboxController implements PomController{
 
     @Override
     public double getRightX() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getRightX'");
+        return controller.getRightX();
     }
 
     @Override
     public double getLeftY() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getLeftY'");
+        return controller.getLeftY();
     }
 
     @Override
