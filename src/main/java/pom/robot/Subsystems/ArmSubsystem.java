@@ -5,7 +5,6 @@ import com.revrobotics.RelativeEncoder;
 import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import pom.robot.Constants;
 
@@ -35,8 +34,18 @@ public class ArmSubsystem extends SubsystemBase {
         return direction;
     }
 
+    public Command defultCommand() {
+        return this.run(() -> {
+            if (!fold.get() || !ground.get()) {
+                setSpeed(0);
+            } else {
+                setSpeed(resistGravity());
+            }
+        });
+    }
+
     public Command open(double speed) {
-        return Commands.startEnd(() -> setSpeed(speed + resistGravity()), () -> setSpeed(0), instance).until(() -> !ground.get());
+        return this.startEnd(() -> setSpeed(speed + resistGravity()), () -> setSpeed(0)).until(() -> !ground.get());
     }
 
     void setSpeed(double speed) {
@@ -48,12 +57,12 @@ public class ArmSubsystem extends SubsystemBase {
     }
 
     public Command close(double speed) {
-        return Commands.startEnd(() -> setSpeed(speed + resistGravity()), () -> setSpeed(0), instance).until(() -> !fold.get());
+        return this.startEnd(() -> setSpeed(speed + resistGravity()), () -> setSpeed(0)).until(() -> !fold.get());
     }
 
     public Command goToPosition(double speed, ArmPosition position) {
         direction = encoder.getPosition() < position.getValue() ? ArmDirection.OPEN : ArmDirection.CLOSE;
-        return Commands.startEnd(() -> setSpeed(speed + resistGravity()), () -> setSpeed(resistGravity()), instance)
+        return this.startEnd(() -> setSpeed(speed + resistGravity()), () -> setSpeed(resistGravity()))
                 .until(() -> (direction == ArmDirection.CLOSE ? encoder.getPosition() > position.getValue() : encoder.getPosition() < position.getValue()));
     }
 

@@ -16,8 +16,8 @@ public class OpenIntakeCloseCommand extends Command {
 
     @Override
     public void initialize() {
-        armSubsystem.open(Constants.ArmConstants.ARM_POWER)
+        (armSubsystem.open(Constants.ArmConstants.ARM_POWER)
                 .andThen(intakeSubsystem.intakeUntilIn(Constants.IntakeConstants.INTAKE_SPIN_POWER_IN)
-                        .andThen(armSubsystem.close(-Constants.ArmConstants.ARM_POWER)));
+                        .andThen(armSubsystem.close(-Constants.ArmConstants.ARM_POWER)))).schedule();
     }
 }

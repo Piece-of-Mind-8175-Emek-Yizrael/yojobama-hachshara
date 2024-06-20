@@ -36,6 +36,10 @@ public class IntakeSubsystem extends SubsystemBase {
         return Commands.startEnd(() -> spin(speed), () -> spin(0), instance).finallyDo(() -> isIn = false);
     }
 
+    public Command defultCommand() {
+        return this.runOnce(() -> spin(0));
+    }
+
     public Command outtakeTime(double seconds, double speed) {
         return Commands.startEnd(() -> spin(speed), () -> spin(0), instance)
                 .deadlineWith(new WaitCommand(seconds))
