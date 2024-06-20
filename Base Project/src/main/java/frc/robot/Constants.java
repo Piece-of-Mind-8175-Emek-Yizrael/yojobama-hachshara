@@ -24,8 +24,7 @@ public class Constants {
     public static final int TIME_THAT_URI_WANTS = 2;
 
 
-    public static class ArmConstants
-    {
+    public static class ArmConstants {
         public static final int GROUND_SWICH_PORT = 3;
         public static final int FOLD_SWICH_PORT = 4;
         public static final double ARM_POWER = 0.1;
@@ -36,16 +35,15 @@ public class Constants {
 
     }
 
-    public static class IntakeConstants
-    {
+    public static class IntakeConstants {
         public static final int INTAKE_CURRENT_LIMIT = 50;
         public static final double INTAKE_SPIN_POWER_IN = -0.3;
         public static final double INTAKE_SPIN_POWER_OUT = 0.75;
         public static final int INTAKE_PORT = 6;
     }
 
-    public static class DriveConstants
-    {
+
+    public static class DriveConstants {
         public static final double DRIVE_TRAIN_AUTO_SPEED = 0.15;
         public static final int LEFT_TALON = 2;
         public static final int LEFT_VICTOR = 1;
