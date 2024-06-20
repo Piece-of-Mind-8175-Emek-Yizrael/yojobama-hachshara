@@ -11,6 +11,12 @@ import frc.robot.Constants;
 
 public class ArmSubsystem extends SubsystemBase
 {
+    public static ArmSubsystem instance;
+
+    public static ArmSubsystem getInstance()
+        {   if(instance == null) instance = new ArmSubsystem();
+            return instance;}
+
     public enum ArmDirection{
         OPEN,CLOSE,HOLD,FREE
     }
@@ -33,7 +39,7 @@ public class ArmSubsystem extends SubsystemBase
 
     ArmDirection direction;
 
-    public ArmSubsystem()
+    private ArmSubsystem()
     {
         ff = new ArmFeedforward(0, Constants.ArmConstants.FF_KG , 0);
         liftMotor = new CANSparkMax(Constants.ArmConstants.LIFT_MOTOR_PORT, com.revrobotics.CANSparkLowLevel.MotorType.kBrushless);
@@ -53,19 +59,15 @@ public class ArmSubsystem extends SubsystemBase
     public ArmDirection getDirection() {return direction;}
 
     public Command open(double speed)
-    {
-        return Commands.startEnd(() -> setSpeed(speed + resistGravity()),() -> setSpeed(0),this).until(() -> !ground.get());
-    }
+        {return Commands.startEnd(() -> setSpeed(speed + resistGravity()),() -> setSpeed(0),instance).until(() -> !ground.get());}
 
     public Command close(double speed)
-    {
-        return Commands.startEnd(() -> setSpeed(speed + resistGravity()),() -> setSpeed(0),this).until(() -> !fold.get());
-    }
+        {return Commands.startEnd(() -> setSpeed(speed + resistGravity()),() -> setSpeed(0),instance).until(() -> !fold.get());}
 
     public Command goToPosition(double speed,ArmPosition position)
     {
         direction = encoder.getPosition() < position.getValue() ? ArmDirection.OPEN : ArmDirection.CLOSE;
-        return Commands.startEnd(() -> setSpeed(speed + resistGravity()),() -> setSpeed(resistGravity()),this)
+        return Commands.startEnd(() -> setSpeed(speed + resistGravity()),() -> setSpeed(resistGravity()),instance)
                 .until(() -> (direction==ArmDirection.CLOSE ? encoder.getPosition()>position.getValue() : encoder.getPosition()<position.getValue()));
     }
 }

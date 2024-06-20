@@ -8,12 +8,19 @@ import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import frc.robot.Constants;
 
 import java.util.function.DoubleSupplier;
 
 public class DriveSubsystem extends SubsystemBase
 {
+    public static DriveSubsystem instance;
+
+    public static DriveSubsystem getInstance()
+        {   if (instance == null) instance = new DriveSubsystem();
+            return instance;}
+
     WPI_TalonSRX leftDriveTalon , rightDriveTalon;
     WPI_VictorSPX leftDriveVictor , rightDriveVictor;
 
@@ -21,7 +28,7 @@ public class DriveSubsystem extends SubsystemBase
 
     PigeonIMU imu;
 
-    public DriveSubsystem()
+    private DriveSubsystem()
     {
         rightDriveTalon = new WPI_TalonSRX(Constants.DriveConstants.RIGHT_TALON);
         rightDriveVictor = new WPI_VictorSPX(Constants.DriveConstants.RIGHT_VICTOR);
@@ -41,21 +48,19 @@ public class DriveSubsystem extends SubsystemBase
         imu = new PigeonIMU(Constants.DriveConstants.PigeonIMU);
     }
 
+    public double getAngle() {return imu.getYaw();}
+
     void drive(double forward, double turn) {driveTrain.arcadeDrive(forward , turn);}
 
     public Command driveCommand(DoubleSupplier forward, DoubleSupplier turn)
-        {return Commands.run(() -> drive(forward.getAsDouble(),turn.getAsDouble()) , this);}
+        {return Commands.run(() -> drive(forward.getAsDouble(),turn.getAsDouble()) , instance);}
 
-    public Command driveForwardTimeCommand(int time,double speed)
-    {
-        Timer timer = new Timer();
-        timer.start();
-        return Commands.startEnd(() -> drive(speed,0),() -> drive(0,0) ,this).until(() -> ((int)timer.get()*1000 > time));
-    }
+    public Command driveForwardTimeCommand(double seconds,double speed)
+        {return Commands.startEnd(() -> drive(speed,0),() -> drive(0,0) ,instance).deadlineWith(new WaitCommand(seconds));}
 
     public Command turnAngleCommand(double wantedAngle,double speed)
         {return Commands.startEnd(() -> drive(speed,0),
                 () -> drive(0,0) ,
-                this)
+                instance)
                 .until(() -> Math.abs(wantedAngle -imu.getYaw()) < 5);}
 }
