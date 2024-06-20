@@ -1,9 +1,9 @@
 package pom.robot.Commands;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.Constants;
-import frc.robot.Subsystems.ArmSubsystem;
-import frc.robot.Subsystems.IntakeSubsystem;
+import pom.robot.Constants;
+import pom.robot.Subsystems.ArmSubsystem;
+import pom.robot.Subsystems.IntakeSubsystem;
 
 public class OpenIntakeCloseCommand extends Command {
     IntakeSubsystem intakeSubsystem;

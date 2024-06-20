@@ -7,7 +7,7 @@ import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Constants;
+import pom.robot.Constants;
 
 public class ArmSubsystem extends SubsystemBase {
     private static ArmSubsystem instance;
@@ -23,6 +23,7 @@ public class ArmSubsystem extends SubsystemBase {
         ground = new DigitalInput(Constants.ArmConstants.GROUND_SWICH_PORT);
         fold = new DigitalInput(Constants.ArmConstants.FOLD_SWICH_PORT);
         encoder = liftMotor.getEncoder();
+        encoder.setPositionConversionFactor((1.0 / 50) * (16.0 / 42) * 2 * Math.PI);
     }
 
     public static ArmSubsystem getInstance() {

@@ -7,7 +7,7 @@ import edu.wpi.first.wpilibj.event.EventLoop;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 
-import static frc.robot.POM_lib.Joysticks.JoystickConstants.*;
+import static pom.robot.POM_lib.Joysticks.JoystickConstants.*;
 
 public class PomXboxController implements PomController{
     CommandXboxController controller;

@@ -6,7 +6,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
-import frc.robot.Constants;
+import pom.robot.Constants;
 
 public class IntakeSubsystem extends SubsystemBase {
     private static IntakeSubsystem instance;
